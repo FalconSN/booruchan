@@ -1,4 +1,3 @@
-//use image::{codecs::jpeg::JpegEncoder, imageops::FilterType, DynamicImage, ImageReader};
 use std::future::Future;
 use std::io::{Error, ErrorKind};
 #[cfg(target_os = "android")]
@@ -9,7 +8,7 @@ use std::path::{Path, PathBuf};
 use tokio::fs::{self, File};
 use tokio::io::{AsyncReadExt, AsyncWriteExt, BufReader, BufWriter};
 
-use crate::downloader::BLOCKSIZE;
+use crate::consts::BLOCKSIZE;
 
 pub async fn mvf<F, Fu>(src: &str, dest: &str, on_success: F)
 where
@@ -153,89 +152,3 @@ pub fn recursive_file_create_blocking<P: AsRef<Path>>(path: P) -> Result<(), Err
         },
     }
 }
-
-/*pub async fn image_resize<'image, F: FnOnce(), P: AsRef<Path>>(
-    _src: P,
-    mut dest: Vec<&'image str>,
-    size: &(u32, u32),
-    fallback: Option<&'image str>,
-    on_success: F,
-) -> Option<PathBuf> {
-    let src: &Path = _src.as_ref();
-    let mut dest_path: PathBuf = dest.iter().collect::<PathBuf>();
-    match recursive_dir_create(dest_path.parent().unwrap()).await {
-        Ok(_) => {
-            match fs::metadata(&dest_path).await {
-                Ok(m) => {
-                    if m.st_size() > 0 {
-                        //println!("file already exists, skipping: {}", dest_path.display());
-                        fs::remove_file(&dest_path).await.unwrap();
-                    }
-                }
-                Err(_) => (),
-            }
-        }
-        Err(e) => match e.kind() {
-            ErrorKind::PermissionDenied => match fallback {
-                Some(f) => {
-                    dest[0] = f;
-                    dest_path = dest.iter().collect::<PathBuf>();
-                    match recursive_dir_create(dest_path.parent().unwrap()).await {
-                        Ok(_) => (),
-                        Err(e) => panic!("{:?}", e),
-                    }
-                }
-                None => panic!("{:?}", e),
-            },
-            _ => panic!("{:?}", e),
-        },
-    }
-    let mut src_image: DynamicImage = match ImageReader::open(src).unwrap().decode() {
-        Ok(d) => d,
-        Err(_) => {
-            println!("decode error for {}", src.display());
-            return None;
-        }
-    };
-    let src_size: (u32, u32) = (src_image.width(), src_image.height());
-    if src_size.0 >= size.0 || src_size.1 >= size.0 {
-        println!("resizing...");
-        src_image = src_image.resize(size.0, size.0, FilterType::Lanczos3);
-        println!("resized.");
-    }
-    let dest_file: std::fs::File = match std::fs::OpenOptions::new()
-        .create(true)
-        .write(true)
-        .open(&dest_path)
-    {
-        Ok(f) => f,
-        Err(e) => {
-            println!("error while opening file: {}", dest_path.display());
-            panic!("{:?}", e);
-        }
-    };
-    let writer: std::io::BufWriter<std::fs::File> = std::io::BufWriter::new(dest_file);
-    let encoder: JpegEncoder<std::io::BufWriter<std::fs::File>> =
-        JpegEncoder::new_with_quality(writer, 90);
-    println!("converting...");
-    match src_image.into_rgb8().write_with_encoder(encoder) {
-        Ok(_) => {
-            println!("converted.");
-            on_success();
-        }
-        Err(e) => panic!("{:?}", e),
-    };
-    return Some(dest_path);
-    /*
-    match src_image.save_with_format(dest, ImageFormat::Jpeg) {
-        Ok(_) => {
-            println!("executing on_success");
-            on_success();
-        }
-        Err(e) => {
-            println!("couldn't compress {}!\n{}", src.to_str().unwrap(), e);
-            panic!();
-        }
-    }
-    */
-}*/

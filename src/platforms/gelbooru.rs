@@ -1,5 +1,16 @@
-use crate::platforms::base::PlatformConfig;
+use crate::{platforms::base::PlatformConfig, worker::Operation};
+use reqwest::Client;
+use tokio::sync::{mpsc, oneshot};
 
-pub async fn main<'gelbooru>(_config: PlatformConfig<'gelbooru>) {
-    println!("invoked gelbooru");
+pub struct Gelbooru<'g> {
+    pub root: &'g str,
+    pub config: PlatformConfig<'g>,
+    pub worker: mpsc::Sender<Operation<'g>>,
+    pub client: Client,
+}
+
+impl<'g> Gelbooru<'g> {
+    pub async fn main(&self) -> () {
+        return;
+    }
 }

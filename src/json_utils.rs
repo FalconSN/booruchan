@@ -83,9 +83,8 @@ pub fn get_value<'a>(
     }
     if json_data.contains_key(key) {
         return Some(&json_data[key]);
-    } else {
-        return None;
     }
+    return None;
 }
 
 pub fn get_value_string(map: &Map<String, Value>, key: &str) -> Option<String> {

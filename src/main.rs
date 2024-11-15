@@ -1,11 +1,8 @@
 use booruchan::{
     consts::*,
-    platforms::{
-        base::{parse_config, PlatformConfig},
-        gelbooru, Moebooru,
-    },
-    statics::HOME,
+    platforms::base::{parse_config, Platform, PlatformConfig},
     worker::{Operation, Worker},
+    HOME,
 };
 use reqwest::ClientBuilder;
 use serde_json::{Map, Value};
@@ -71,27 +68,12 @@ async fn main() {
         receiver,
     );
     let worker_handle = task::spawn(async move { worker.main().await });
-    /*set.spawn(async move {
-        worker.main().await;
-    });*/
     for platform in platforms {
         if config.contains_key(platform) {
-            match platform {
-                YANDERE | KONACHAN | SAKUGABOORU => {
-                    let conf: PlatformConfig = parse_config(config, platform).unwrap();
-                    let _sender = sender.clone();
-                    let _client = client.clone();
-                    set.spawn(async move {
-                        Moebooru::new(conf, _sender, _client).main().await;
-                    });
-                }
-                GELBOORU => {
-                    let conf: PlatformConfig = parse_config(config, platform).unwrap();
-                    println!("spawning gelbooru");
-                    set.spawn(async move { gelbooru::main(conf).await });
-                }
-                _ => (),
-            }
+            let _sender = sender.clone();
+            let _client = client.clone();
+            let conf: PlatformConfig = parse_config(config, platform).unwrap();
+            set.spawn(async move { Platform::init(conf, _sender, _client).await });
         }
     }
     set.join_all().await;

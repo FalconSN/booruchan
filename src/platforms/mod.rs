@@ -1,6 +1,8 @@
 pub mod base;
-pub mod gelbooru;
-pub mod moebooru;
+mod gelbooru;
+mod moebooru;
 //pub mod gelbooru;
 
-pub use moebooru::Moebooru;
+pub use base::{Platform, PlatformConfig};
+pub use gelbooru::Gelbooru;
+pub use moebooru::{MoePost, Moebooru};

@@ -8,7 +8,6 @@ use reqwest::{
 use std::os::android::fs::MetadataExt;
 #[cfg(target_os = "linux")]
 use std::os::linux::fs::MetadataExt;
-//use std::os::unix::fs::MetadataExt;
 use std::{
     io::{ErrorKind, SeekFrom},
     path::PathBuf,
@@ -174,7 +173,7 @@ pub async fn main<'download>(
             }
             Err(_) => {
                 if tries == retries {
-                    println!("max number of retries reached for {}", url);
+                    eprintln!("max number of retries reached for {}", url);
                     return None;
                 }
                 tries += 1;

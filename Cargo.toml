@@ -12,7 +12,7 @@ tokio-util = { version = "0.7", features = ["io"] }
 bytes = "1.7"
 futures = "0.3"
 image = { version = "0.25", features = ["jpeg"] }
-serde = "1.0.210"
+serde = { version = "1.0.210", features = ["derive"] }
 tokio = { version = "1.40.0", default-features = false, features = [
     "time",
     "io-util",
@@ -22,6 +22,8 @@ tokio = { version = "1.40.0", default-features = false, features = [
     "rt",
     "rt-multi-thread",
 ] }
+#rusqlite = "0.32.1"
+#serde_rusqlite = "0.36.0"
 
 [profile.release]
 opt-level = 3

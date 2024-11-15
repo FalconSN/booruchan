@@ -1,23 +1,61 @@
 use crate::consts::NULL;
+use serde::Deserialize;
 use serde_json::{Map, Value};
 
-pub fn strip_last(str: &str, char: char) -> &str {
-    match str.strip_suffix(char) {
-        Some(s) => return s,
-        None => return str,
+struct Range {
+    start: i64,
+    end: i64,
+}
+
+struct Keyword<'k> {
+    key: &'k str,
+    range: Option<Range>,
+    index: Option<i64>,
+}
+
+impl<'k> Keyword<'k> {
+    async fn parse(&self, fmt_str: &'k str) -> Self {
+        let mut _substr = fmt_str.get(1..=fmt_str.len() - 2).unwrap();
+        let _split: Vec<&str> = _substr
+            .rsplitn(3, ['[', ']'])
+            .filter(|&s| !s.is_empty())
+            .collect();
+        if _split.len() > 1 {
+            _substr = _split[1];
+            if _split[0].starts_with(':') {}
+        }
     }
 }
 
-pub fn strip(str: &str, char: char) -> &str {
-    match str.strip_prefix(char) {
-        Some(s) => match s.strip_suffix(char) {
-            Some(_s) => return _s,
-            None => return s,
-        },
-        None => match str.strip_suffix(char) {
-            Some(s) => return s,
-            None => return str,
-        },
+pub trait Format {
+    async fn get_indexes(&self, fmt_str: &str) -> Vec<(usize, usize)> {
+        let mut in_brackets = false;
+        let mut indexes: Vec<(usize, usize)> = Vec::new();
+        let mut start_index: usize = 0;
+        for (index, char) in fmt_str.char_indices() {
+            match char {
+                '{' if index > 0 && fmt_str.chars().nth(index - 1).unwrap() != '\\' => {
+                    in_brackets = true;
+                    start_index = index;
+                }
+                '}' if index > 0
+                    && fmt_str.chars().nth(index - 1).unwrap() != '\\'
+                    && in_brackets =>
+                {
+                    in_brackets = false;
+                    indexes.push((start_index, index));
+                }
+                _ => (),
+            }
+        }
+        return indexes;
+    }
+
+    async fn format(&self, fmt_str: &str) -> String {
+        let indexes = self.get_indexes(fmt_str).await;
+        for (start, end) in indexes {
+            let _substr = fmt_str.get(start + 1..=end - 1).unwrap();
+        }
     }
 }
 
@@ -35,8 +73,8 @@ pub async fn format_multiple<'post>(
     return ret;
 }
 
-pub async fn format<'post>(
-    post: &Map<String, Value>,
+pub async fn format<'f, T: Deserialize<'f>>(
+    post: T,
     kw_map: Option<&Map<String, Value>>,
     fmt: &str,
     restrict: Option<&Value>,
@@ -122,7 +160,7 @@ pub async fn format<'post>(
                             match val {
                                 Value::String(s) => _temp.push(s.as_str().to_owned()),
                                 Value::Number(n) => _temp.push(n.to_string()),
-                                Value::Bool(b) => _temp.push(if *b {
+                                Value::Bool(b) => _temp.push(if b {
                                     "true".to_owned()
                                 } else {
                                     "false".to_owned()
@@ -137,7 +175,7 @@ pub async fn format<'post>(
                         _repl.push_str(_temp.join(" ").as_str());
                     }
                 }
-                Value::Bool(b) => _repl.push_str(if *b { "true" } else { "false" }),
+                Value::Bool(b) => _repl.push_str(if b { "true" } else { "false" }),
                 Value::Null => _repl.push_str(NULL),
                 Value::Object(_) => {
                     println!("objects can't be replaced with format string: {_substr_all}");

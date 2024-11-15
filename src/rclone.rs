@@ -1,11 +1,30 @@
 use std::future::Future;
-use std::io::ErrorKind;
-//use std::path::Path;
-//use std::process::{exit, Command, Output};
+use std::io;
 use std::process::{exit, Stdio};
 use tokio::fs;
 use tokio::io::{stderr, AsyncReadExt, AsyncWriteExt};
 use tokio::process::Command;
+
+#[derive(Debug)]
+pub enum RcloneErrorKind {
+    MaxRetriesExceeded,
+    Move,
+}
+
+#[derive(Debug)]
+#[allow(dead_code)]
+struct RcloneError {
+    kind: RcloneErrorKind,
+    msg: String,
+}
+
+impl std::fmt::Display for RcloneError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
+impl std::error::Error for RcloneError {}
 
 pub async fn upload<'up, F, Fu, P>(src: P, dest: P, delete: bool, on_success: F) -> bool
 where
@@ -36,6 +55,10 @@ where
                             return true;
                         } else {
                             if errors > 5 {
+                                /*return Err(RcloneError {
+                                    kind: RcloneErrorKind::MaxRetriesExceeded,
+                                    msg: format!("max retries exceeded for '{}'", src_str),
+                                });*/
                                 println!("giving up on uploading {}", src_str);
                                 return false;
                             }
@@ -54,11 +77,11 @@ where
                   return true;*/
             }
             Err(e) => match e.kind() {
-                ErrorKind::NotFound => {
+                io::ErrorKind::NotFound => {
                     println!("do you have rclone installed?");
                     exit(1);
                 }
-                ErrorKind::PermissionDenied => {
+                io::ErrorKind::PermissionDenied => {
                     println!("unable to execute rclone!");
                     exit(1);
                 }
