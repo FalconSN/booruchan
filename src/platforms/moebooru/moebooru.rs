@@ -139,7 +139,7 @@ impl Moebooru {
         &'post self,
         post: &'post Post,
         tag_map: &'post TagMap,
-    ) -> Keywords {
+    ) -> Keywords<'post> {
         return Keywords {
             platform: self.platform,
             id: post.id,
