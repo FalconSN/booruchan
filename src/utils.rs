@@ -69,12 +69,14 @@ where
     }
 }
 
-pub async fn mvf<F, Fu>(src: &str, dest: &str, on_success: F)
+pub async fn mvf<F, Fu, P>(_src: P, _dest: P, on_success: F)
 where
     F: FnOnce() -> Fu,
     Fu: Future<Output = ()>,
+    P: AsRef<str>,
 {
-    //#[repr(i32)]
+    let src = _src.as_ref();
+    let dest = _dest.as_ref();
     enum MoveError {
         ENOENT = 1,
         EACCESS = 12,

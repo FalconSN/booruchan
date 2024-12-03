@@ -191,8 +191,7 @@ impl Moebooru {
         };
     }
 
-    async fn handle_duplicate<'dup>(&self, db_entry: DbEntry, duplicate_entry: &DbEntry) -> bool {
-        let mut success: bool = true;
+    async fn handle_duplicate<'dup>(&self, db_entry: DbEntry, duplicate_entry: &DbEntry) -> () {
         if db_entry.path != duplicate_entry.path {
             if self.config.to_cloud {
                 let cloud = self.config.cloud.as_ref().unwrap().as_str();
@@ -211,7 +210,23 @@ impl Moebooru {
                 .await;
             }
         }
-        match db_entry.compress_path {
+        if let (Some(old_path), Some(new_path)) = (
+            duplicate_entry.compress_path.as_ref(),
+            db_entry.compress_path.as_ref(),
+        ) {
+            if self.config.to_cloud {
+                let cloud = self.config.cloud.as_ref().unwrap().as_str();
+                rclone::moveto(
+                    format!("{cloud}:{old_path}"),
+                    format!("{cloud}:{new_path}"),
+                    || async {},
+                )
+                .await;
+            } else {
+                utils::mvf(old_path, new_path, || async {}).await;
+            }
+        }
+        /*match db_entry.compress_path {
             Some(ref cp) => match duplicate_entry.compress_path {
                 Some(ref dcp) => {
                     let src = dcp.as_str();
@@ -231,17 +246,17 @@ impl Moebooru {
                 None => success = false,
             },
             None => (),
-        }
-        if success {
-            self.worker
-                .send(Operation::Insert(Insert {
-                    platform: self.platform,
-                    entry: db_entry,
-                }))
-                .await
-                .unwrap();
-        }
-        return success;
+        }*/
+        //if success {
+        self.worker
+            .send(Operation::Insert(Insert {
+                platform: self.platform,
+                entry: db_entry,
+            }))
+            .await
+            .unwrap();
+        //}
+        //return success;
     }
 
     async fn handle_compression(
@@ -287,7 +302,7 @@ impl Moebooru {
             Some(file) => {
                 if self.config.to_cloud {
                     let _dest_path = path.join("/");
-                    if rclone::upload(
+                    if rclone::copyto(
                         file.to_str().unwrap(),
                         _dest_path.as_str(),
                         self.config.delete,
@@ -339,9 +354,8 @@ impl Moebooru {
         if post.is_duplicate {
             match post.duplicate_entry {
                 Some(ref duplicate_entry) => {
-                    if db_entry != *duplicate_entry
-                    && self.handle_duplicate(db_entry.clone(), duplicate_entry).await {
-                        return;
+                    if db_entry != *duplicate_entry {
+                        return self.handle_duplicate(db_entry.clone(), duplicate_entry).await;
                     }
 
                 },
@@ -370,7 +384,7 @@ impl Moebooru {
                     None => (),
                 }
                 if self.config.to_cloud {
-                    is_success = rclone::upload(
+                    is_success = rclone::copyto(
                         file.to_str().unwrap(),
                         format!(
                             "{}:{}",

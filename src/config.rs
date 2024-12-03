@@ -39,11 +39,11 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn load() -> Config {
+    pub fn load() -> Self {
         use crate::statics::ARGS;
         use std::{fs, io::BufReader, io::ErrorKind, process::exit};
 
-        let conf: Config;
+        let conf: Self;
         match fs::OpenOptions::new().read(true).open(&ARGS.config.path) {
             Ok(f) => {
                 conf = serde_json::from_reader(BufReader::new(f)).unwrap();
@@ -323,20 +323,19 @@ impl<'de> Deserialize<'de> for Config {
                         }
                         Field::Gelbooru => {
                             let _: PlatformConfig = map.next_value_seed(&global_config)?;
-                        }
-                        /*Field::Gelbooru => {
-                            if gelbooru {
-                                return Err(de::Error::duplicate_field("gelbooru"));
-                            }
-                            platforms
-                                .push(Platform::Gelbooru(map.next_value_seed(&global_config)?));
-                            gelbooru = true;
-                            /*if gelbooru.is_some() {
-                                return Err(de::Error::duplicate_field("gelbooru"));
-                            }
-                            let val = map.next_value_seed(&global_config)?;
-                            gelbooru = Some(val);*/
-                        }*/
+                        } /*Field::Gelbooru => {
+                              if gelbooru {
+                                  return Err(de::Error::duplicate_field("gelbooru"));
+                              }
+                              platforms
+                                  .push(Platform::Gelbooru(map.next_value_seed(&global_config)?));
+                              gelbooru = true;
+                              /*if gelbooru.is_some() {
+                                  return Err(de::Error::duplicate_field("gelbooru"));
+                              }
+                              let val = map.next_value_seed(&global_config)?;
+                              gelbooru = Some(val);*/
+                          }*/
                     }
                 }
                 Ok(Config {

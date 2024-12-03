@@ -28,7 +28,7 @@ impl std::fmt::Display for RcloneError {
 impl std::error::Error for RcloneError {}
 */
 
-pub async fn upload<'up, F, Fu, P>(src: P, _dest: P, delete: bool, on_success: F) -> bool
+pub async fn copyto<'up, F, Fu, P>(_src: P, _dest: P, delete: bool, on_success: F) -> bool
 where
     F: FnOnce() -> Fu,
     Fu: Future<Output = ()>,
@@ -36,10 +36,10 @@ where
 {
     let dest: &str = _dest.as_ref();
     let mut errors: u8 = 0;
-    let src_str: &str = src.as_ref();
+    let src: &str = _src.as_ref();
     loop {
         match Command::new("rclone")
-            .args(["copy", src_str, dest, "--no-traverse"])
+            .args(["copyto", src, dest, "--no-traverse"])
             .stdin(Stdio::null())
             .stdout(Stdio::null())
             .stderr(Stdio::piped())
@@ -52,7 +52,7 @@ where
                         if s.success() {
                             on_success().await;
                             if delete {
-                                fs::remove_file(src_str).await.unwrap();
+                                fs::remove_file(src).await.unwrap();
                             }
                             return true;
                         } else {
@@ -61,7 +61,7 @@ where
                                     kind: RcloneErrorKind::MaxRetriesExceeded,
                                     msg: format!("max retries exceeded for '{}'", src_str),
                                 });*/
-                                println!("giving up on uploading {}", src_str);
+                                println!("giving up on uploading {}", src);
                                 return false;
                             }
                             let mut err: String = String::new();
