@@ -323,8 +323,16 @@ impl Moebooru {
         let mut db_entry = DbEntry {
             id: post.id,
             md5: kw.md5.to_string(),
-            source: post.source.clone(),
-            tags: post.tags.clone(),
+            source: if post.source.is_empty() {
+                None
+            } else {
+                Some(post.source.clone())
+            },
+            tags: if post.tags.is_empty() {
+                None
+            } else {
+                Some(post.tags.clone())
+            },
             path: full_path.clone(),
             compress_path: None,
         };

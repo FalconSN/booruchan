@@ -15,8 +15,8 @@ use tokio::{
 pub struct DbEntry {
     pub id: i64,
     pub md5: String,
-    pub source: String,
-    pub tags: String,
+    pub source: Option<String>,
+    pub tags: Option<String>,
     pub path: String,
     pub compress_path: Option<String>,
 }
@@ -95,8 +95,8 @@ impl Worker {
         while let Ok(State::Row) = statement.next() {
             ret.id = statement.read::<i64, _>(0).unwrap();
             ret.md5 = statement.read::<String, _>(1).unwrap();
-            ret.source = statement.read::<String, _>(2).unwrap();
-            ret.tags = statement.read::<String, _>(3).unwrap();
+            ret.source = statement.read::<Option<String>, _>(2).unwrap();
+            ret.tags = statement.read::<Option<String>, _>(3).unwrap();
             ret.path = statement.read::<String, _>(4).unwrap();
             ret.compress_path = statement.read::<Option<String>, _>(5).unwrap();
         }
@@ -109,10 +109,10 @@ impl Worker {
             .execute(format!(
                 "CREATE TABLE IF NOT EXISTS {table}(
                     id INT PRIMARY KEY,
-                    md5 TEXT,
+                    md5 TEXT NOT NULL,
                     source TEXT,
                     tags TEXT,
-                    path TEXT,
+                    path TEXT NOT NULL,
                     compress_path TEXT)",
                 table = db_entry.platform
             ))
@@ -127,8 +127,20 @@ impl Worker {
             .bind_iter::<_, (usize, Value)>([
                 (1, Value::Integer(db_entry.entry.id)),
                 (2, Value::String(db_entry.entry.md5)),
-                (3, Value::String(db_entry.entry.source)),
-                (4, Value::String(db_entry.entry.tags)),
+                (
+                    3,
+                    match db_entry.entry.source {
+                        Some(s) => Value::String(s),
+                        None => Value::Null,
+                    },
+                ),
+                (
+                    4,
+                    match db_entry.entry.tags {
+                        Some(s) => Value::String(s),
+                        None => Value::Null,
+                    },
+                ),
                 (5, Value::String(db_entry.entry.path)),
                 (
                     6,
