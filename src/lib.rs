@@ -1,20 +1,14 @@
 mod args;
-
-//pub mod downloader;
 mod downloader;
 pub use downloader::Downloader;
-pub mod json_utils;
+mod config;
 pub mod platforms;
 pub mod rclone;
-//pub mod string;
-mod config;
 pub use config::{Config, PlatformConfig};
-pub use platforms::base::init_platforms;
+//pub use platforms::base::init_platforms;
 pub mod utils;
 pub mod worker;
 pub use args::Args;
-//pub use fmt::{KeywordMap, Value};
-//pub use statics::HOME;
 
 #[macro_export]
 macro_rules! pub_struct {
@@ -28,15 +22,6 @@ macro_rules! pub_struct {
 
 pub mod consts {
     pub const NULL: &str = "null";
-    pub const YANDERE: &str = "yandere";
-    pub const YANDERE_ROOT: &str = "https://yande.re/post.json";
-    pub const KONACHAN: &str = "konachan";
-    pub const KONACHAN_ROOT: &str = "https://konachan.com/post.json";
-    pub const SAKUGABOORU: &str = "sakugabooru";
-    pub const SAKUGABOORU_ROOT: &str = "https://sakugabooru.com/post.json";
-    pub const GELBOORU: &str = "gelbooru";
-    pub const GELBOORU_ROOT: &str = "https://gelbooru.com/index.php?page=dapi&s=post&q=index";
-
     pub const BLOCKSIZE: usize = 1048576;
     pub const GREEN: &str = "\x1b[32;1;1m";
     pub const RESET: &str = "\x1b[0m";
@@ -44,9 +29,14 @@ pub mod consts {
     //pub const DUPLICATE: &str = "_duplicate_";
 }
 
-pub(crate) mod statics {
+pub mod statics {
     use std::env::var;
     use std::sync::LazyLock;
+
+    use crate::Args;
+
+    pub static ARGS: LazyLock<Args> = LazyLock::new(|| Args::parse());
+    //pub static CONFIG: LazyLock<Config> = LazyLock::new(|| Config::load());
     pub static HOME: LazyLock<String> = LazyLock::new(|| match var("HOME") {
         Ok(v) => v.trim_end_matches('/').to_string(),
         Err(_) => {

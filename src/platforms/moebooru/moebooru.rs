@@ -14,9 +14,8 @@ use tokio::{
 use super::{Params, Post, Posts, Status};
 use crate::{
     config::{Compress, PlatformConfig},
-    consts::{KONACHAN, KONACHAN_ROOT, SAKUGABOORU, SAKUGABOORU_ROOT, YANDERE, YANDERE_ROOT},
     fmt::Keywords,
-    platforms::base::{Platform, TagMap},
+    platforms::base::TagMap,
     rclone,
     statics::HOME,
     utils,
@@ -41,22 +40,21 @@ struct Timer {
     sleep: Duration,
 }
 
-pub struct Moebooru<'m> {
-    platform: &'m str,
-    root: &'m str,
+pub struct Moebooru {
+    platform: &'static str,
+    root: &'static str,
     config: PlatformConfig,
-    worker: mpsc::Sender<Operation<'m>>,
+    worker: mpsc::Sender<Operation>,
     client: Client,
     timer: Timer,
 }
 
-impl<'m> Moebooru<'m> {
+impl Moebooru {
     pub fn new(
-        _platform: Platform,
-        /*platform: &'m str,
-        root: &'m str,*/
+        platform: &'static str,
+        root: &'static str,
         config: PlatformConfig,
-        worker: mpsc::Sender<Operation<'m>>,
+        worker: mpsc::Sender<Operation>,
         client: Client,
     ) -> Self {
         let timer = Timer {
@@ -64,13 +62,6 @@ impl<'m> Moebooru<'m> {
             timeout: Duration::from_secs_f32(config.timeout),
             sleep: Duration::from_secs_f32(config.sleep),
         };
-        let (platform, root) = match _platform {
-            Platform::Yandere => (YANDERE, YANDERE_ROOT),
-            Platform::Konachan => (KONACHAN, KONACHAN_ROOT),
-            Platform::Sakugabooru => (SAKUGABOORU, SAKUGABOORU_ROOT),
-            _ => panic!(),
-        };
-        //println!("{:?}", config);
         Self {
             platform,
             root,
@@ -80,6 +71,7 @@ impl<'m> Moebooru<'m> {
             timer,
         }
     }
+
     async fn filter(&self, posts: &mut Posts) {
         for post in posts.iter_mut() {
             if self.config.blacklist.len() > 0 {
@@ -103,7 +95,6 @@ impl<'m> Moebooru<'m> {
                     let op = Operation::Select(Select {
                         platform: self.platform,
                         id: _post.id,
-                        //bindables: Vec::from([(1, Value::Integer(p.id))]),
                         sender: comm_send,
                     });
                     self.worker.send(op).await.unwrap();
@@ -162,7 +153,6 @@ impl<'m> Moebooru<'m> {
                 post.file_url.rsplit_once('.').unwrap().1
             },
             rating: post.rating.as_str(),
-            //path: "",
             general: tag_map
                 .general
                 .iter()
@@ -421,7 +411,6 @@ impl<'m> Moebooru<'m> {
                     }
                 }
             };
-            //let _resp_post = response[POSTS].take();
             let mut posts: Posts = match serde_json::from_value(response["posts"].take()) {
                 Ok(p) => p,
                 Err(e) => panic!("{e:?}\nplatform: {}", self.platform),
@@ -442,7 +431,7 @@ impl<'m> Moebooru<'m> {
         }
     }
 
-    pub async fn main(&self) {
+    pub async fn main(self) {
         let mut params = Params::default();
         for tag in self.config.tags.iter().map(|t| t.as_str()) {
             println!("{}: {}", self.platform, tag);

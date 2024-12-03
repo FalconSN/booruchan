@@ -1,22 +1,10 @@
 use std::{fmt, process::exit};
 
-use crate::{pub_struct, statics::HOME};
+use crate::{platforms::base::Platform, pub_struct, statics::HOME};
 use serde::{
     de::{self, DeserializeSeed, Deserializer, MapAccess, Visitor},
     Deserialize,
 };
-
-#[derive(Debug)]
-#[allow(dead_code)]
-pub struct Config {
-    pub global: GlobalConfig,
-    // platforms
-    //pub platforms: Vec<Platform>,
-    pub konachan: Option<PlatformConfig>,
-    pub sakugabooru: Option<PlatformConfig>,
-    pub yandere: Option<PlatformConfig>,
-    pub gelbooru: Option<PlatformConfig>,
-}
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(default)]
@@ -35,6 +23,46 @@ impl Default for Compress {
             filename: "{id}.{file_ext}".to_string(),
             size: (5000, 5000),
         }
+    }
+}
+
+//#[derive(Debug)]
+#[allow(dead_code)]
+pub struct Config {
+    pub global: GlobalConfig,
+    // platforms
+    pub platforms: Vec<Platform>,
+    /*pub konachan: Option<PlatformConfig>,
+    pub sakugabooru: Option<PlatformConfig>,
+    pub yandere: Option<PlatformConfig>,
+    pub gelbooru: Option<PlatformConfig>,*/
+}
+
+impl Config {
+    pub fn load() -> Config {
+        use crate::statics::ARGS;
+        use std::{fs, io::BufReader, io::ErrorKind, process::exit};
+
+        let conf: Config;
+        match fs::OpenOptions::new().read(true).open(&ARGS.config.path) {
+            Ok(f) => {
+                conf = serde_json::from_reader(BufReader::new(f)).unwrap();
+            }
+            Err(e) => match e.kind() {
+                ErrorKind::NotFound | ErrorKind::PermissionDenied => {
+                    if ARGS.config.is_custom {
+                        eprintln!(
+                            "config file is not found or accessible: {}",
+                            ARGS.config.path.display()
+                        );
+                        exit(2);
+                    }
+                    conf = serde_json::from_str("{}").unwrap();
+                }
+                _ => panic!("{e:?}"),
+            },
+        }
+        return conf;
     }
 }
 
@@ -99,15 +127,15 @@ impl<'de> Deserialize<'de> for Config {
                 let mut dirname_repl: Option<()> = None;
                 let mut tags: Option<()> = None;
                 let mut blacklist: Option<()> = None;
-                /*let mut platforms: Vec<Platform> = Vec::new();
+                let mut platforms: Vec<Platform> = Vec::new();
                 let mut yandere = false;
                 let mut sakugabooru = false;
                 let mut konachan = false;
-                let mut gelbooru = false;*/
-                let mut yandere: Option<PlatformConfig> = None;
+                //let mut gelbooru = false;
+                /*let mut yandere: Option<PlatformConfig> = None;
                 let mut sakugabooru: Option<PlatformConfig> = None;
                 let mut konachan: Option<PlatformConfig> = None;
-                let mut gelbooru: Option<PlatformConfig> = None;
+                let mut gelbooru: Option<PlatformConfig> = None;*/
 
                 while let Some(key) = map.next_key()? {
                     match key {
@@ -254,67 +282,70 @@ impl<'de> Deserialize<'de> for Config {
                             global_config.blacklist = val;
                         }
                         Field::Yandere => {
-                            /*if yandere {
+                            if yandere {
                                 return Err(de::Error::duplicate_field("yandere"));
                             }
                             platforms.push(Platform::Yandere(map.next_value_seed(&global_config)?));
-                            yandere = true;*/
-                            if yandere.is_some() {
+                            yandere = true;
+                            /*if yandere.is_some() {
                                 return Err(de::Error::duplicate_field("yandere"));
                             }
                             let val = map.next_value_seed(&global_config)?;
-                            yandere = Some(val);
+                            yandere = Some(val);*/
                         }
                         Field::Sakugabooru => {
-                            /*if sakugabooru {
+                            if sakugabooru {
                                 return Err(de::Error::duplicate_field("sakugabooru"));
                             }
                             platforms
                                 .push(Platform::Sakugabooru(map.next_value_seed(&global_config)?));
-                            sakugabooru = true;*/
+                            sakugabooru = true;
 
-                            if sakugabooru.is_some() {
+                            /*if sakugabooru.is_some() {
                                 return Err(de::Error::duplicate_field("sakugabooru"));
                             }
                             let val = map.next_value_seed(&global_config)?;
-                            sakugabooru = Some(val);
+                            sakugabooru = Some(val);*/
                         }
                         Field::Konachan => {
-                            /*if konachan {
+                            if konachan {
                                 return Err(de::Error::duplicate_field("konachan"));
                             }
                             platforms
                                 .push(Platform::Konachan(map.next_value_seed(&global_config)?));
-                            konachan = true;*/
+                            konachan = true;
 
-                            if konachan.is_some() {
+                            /*if konachan.is_some() {
                                 return Err(de::Error::duplicate_field("konachan"));
                             }
                             let val = map.next_value_seed(&global_config)?;
-                            konachan = Some(val);
+                            konachan = Some(val);*/
                         }
                         Field::Gelbooru => {
-                            /*if gelbooru {
+                            let _: PlatformConfig = map.next_value_seed(&global_config)?;
+                        }
+                        /*Field::Gelbooru => {
+                            if gelbooru {
                                 return Err(de::Error::duplicate_field("gelbooru"));
                             }
                             platforms
                                 .push(Platform::Gelbooru(map.next_value_seed(&global_config)?));
-                            gelbooru = true;*/
-                            if gelbooru.is_some() {
+                            gelbooru = true;
+                            /*if gelbooru.is_some() {
                                 return Err(de::Error::duplicate_field("gelbooru"));
                             }
                             let val = map.next_value_seed(&global_config)?;
-                            gelbooru = Some(val);
-                        }
+                            gelbooru = Some(val);*/
+                        }*/
                     }
                 }
                 Ok(Config {
                     global: global_config,
-                    //platforms,
-                    yandere,
+                    platforms,
+                    /*yandere,
                     sakugabooru,
                     konachan,
-                    gelbooru,
+                    gelbooru,*/
                 })
             }
         }
@@ -343,7 +374,7 @@ impl<'de> Deserialize<'de> for Config {
             "yandere",
             "sakugabooru",
             "konachan",
-            "gelbooru",
+            //"gelbooru",
         ];
         deserializer.deserialize_struct("Config", FIELDS, ConfigVisitor)
     }

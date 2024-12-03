@@ -1,21 +1,12 @@
+use std::future::Future;
+
 // crate
-//use json::Map;
 use reqwest::Client;
-//use serde::Deserialize;
-//use serde_json as json;
-use tokio::{
-    sync::mpsc,
-    task::{self, JoinSet},
-    time::Duration,
-};
+use tokio::sync::mpsc;
 
 // local
 use super::{/*Gelbooru, */ Moebooru};
-use crate::{
-    pub_struct,
-    worker::{Operation, Worker},
-    Args, Config,
-};
+use crate::{platforms::statics::*, pub_struct, worker::Operation, PlatformConfig};
 
 pub_struct!(TagMap {
     general: Vec<String>,
@@ -43,60 +34,25 @@ impl TagMap {
     }
 }
 
-/*#[derive(Deserialize)]
-#[serde(rename_all = "lowercase")]*/
 pub enum Platform {
-    Yandere,
-    Sakugabooru,
-    Konachan,
-    Gelbooru,
+    Yandere(PlatformConfig),
+    Sakugabooru(PlatformConfig),
+    Konachan(PlatformConfig),
+    //Gelbooru(PlatformConfig),
 }
 
-pub async fn init_platforms(config: Config, args: Args) {
-    let client: Client = Client::builder()
-        .timeout(Duration::from_secs(10))
-        .user_agent("curl/8.10.1")
-        .build()
-        .unwrap();
-    let mut set: JoinSet<()> = JoinSet::new();
-    let (sender, receiver) = mpsc::channel(10);
-    let mut worker: Worker = Worker::new(args.database.path, receiver);
-    let worker_handle = task::spawn(async move { worker.main().await });
-    match config.yandere {
-        Some(conf) => {
-            let (worker, client) = (sender.clone(), client.clone());
-            set.spawn(async move {
-                Moebooru::new(Platform::Yandere, conf, worker, client)
-                    .main()
-                    .await
-            });
+impl Platform {
+    pub fn init(self, client: Client, worker: mpsc::Sender<Operation>) -> impl Future<Output = ()> {
+        match self {
+            Platform::Yandere(config) => {
+                Moebooru::new(YANDERE, YANDERE_ROOT, config, worker, client).main()
+            }
+            Platform::Konachan(config) => {
+                Moebooru::new(KONACHAN, KONACHAN_ROOT, config, worker, client).main()
+            }
+            Platform::Sakugabooru(config) => {
+                Moebooru::new(SAKUGABOORU, SAKUGABOORU_ROOT, config, worker, client).main()
+            }
         }
-        None => (),
     }
-    match config.sakugabooru {
-        Some(conf) => {
-            let (worker, client) = (sender.clone(), client.clone());
-            set.spawn(async move {
-                Moebooru::new(Platform::Sakugabooru, conf, worker, client)
-                    .main()
-                    .await
-            });
-        }
-        None => (),
-    }
-    match config.konachan {
-        Some(conf) => {
-            let (worker, client) = (sender.clone(), client.clone());
-            set.spawn(async move {
-                Moebooru::new(Platform::Konachan, conf, worker, client)
-                    .main()
-                    .await
-            });
-        }
-        None => (),
-    }
-    set.join_all().await;
-    sender.send(Operation::Close).await.unwrap();
-    worker_handle.await.unwrap();
-    return;
 }

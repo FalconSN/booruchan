@@ -21,13 +21,13 @@ pub struct DbEntry {
     pub compress_path: Option<String>,
 }
 
-pub struct Insert<'i> {
-    pub platform: &'i str,
+pub struct Insert {
+    pub platform: &'static str,
     pub entry: DbEntry,
 }
 
-pub struct Select<'s> {
-    pub platform: &'s str,
+pub struct Select {
+    pub platform: &'static str,
     pub id: i64,
     pub sender: oneshot::Sender<Option<DbEntry>>,
 }
@@ -40,20 +40,20 @@ pub struct ImageRequest {
     pub response_channel: oneshot::Sender<Option<PathBuf>>,
 }
 
-pub enum Operation<'o> {
-    Insert(Insert<'o>),
-    Select(Select<'o>),
+pub enum Operation {
+    Insert(Insert),
+    Select(Select),
     Image(ImageRequest),
     Close,
 }
 
-pub struct Worker<'w> {
-    pub buf: mpsc::Receiver<Operation<'w>>,
+pub struct Worker {
+    pub buf: mpsc::Receiver<Operation>,
     connection: ConnectionThreadSafe,
 }
 
-impl<'w> Worker<'w> {
-    pub fn new<D: AsRef<Path>>(database: D, receiver: mpsc::Receiver<Operation<'w>>) -> Self {
+impl Worker {
+    pub fn new<D: AsRef<Path>>(database: D, receiver: mpsc::Receiver<Operation>) -> Self {
         Self {
             buf: receiver,
             connection: Connection::open_thread_safe(database.as_ref()).unwrap(),
@@ -77,7 +77,7 @@ impl<'w> Worker<'w> {
         }
     }
 
-    async fn select<'_s>(&self, entry: Select<'_s>) {
+    async fn select(&self, entry: Select) {
         let mut statement = match self.connection.prepare(format!(
             "select * from {table} where id = ?",
             table = entry.platform
@@ -104,15 +104,15 @@ impl<'w> Worker<'w> {
         return;
     }
 
-    async fn insert<'_i>(&self, db_entry: Insert<'_i>) {
+    async fn insert(&self, db_entry: Insert) {
         self.connection
             .execute(format!(
-                "CREATE TABLE IF NOT EXISTS {table}(\
-                    id INT PRIMARY KEY, \
-                    md5 TEXT, \
-                    source TEXT, \
-                    tags TEXT, \
-                    path TEXT, \
+                "CREATE TABLE IF NOT EXISTS {table}(
+                    id INT PRIMARY KEY,
+                    md5 TEXT,
+                    source TEXT,
+                    tags TEXT,
+                    path TEXT,
                     compress_path TEXT)",
                 table = db_entry.platform
             ))

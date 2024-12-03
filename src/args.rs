@@ -1,7 +1,8 @@
 use crate::statics::HOME;
-use std::env;
+/*use std::env;
 use std::path::PathBuf;
-use tokio::fs;
+use tokio::fs;*/
+use std::{env, fs, path::PathBuf};
 
 pub struct FileArg {
     pub path: PathBuf,
@@ -31,7 +32,7 @@ impl Default for Args {
 }
 
 impl Args {
-    pub async fn parse() -> Self {
+    pub fn parse() -> Self {
         use std::process::exit;
 
         let mut args = Args::default();
@@ -44,7 +45,7 @@ impl Args {
                 "--database" | "-d" => match _args_.get(i + 1) {
                     Some(path) => {
                         let buf = PathBuf::from(path);
-                        match fs::OpenOptions::new().read(true).open(&buf).await {
+                        match fs::OpenOptions::new().read(true).open(&buf) {
                             Ok(_) => {
                                 args.database = FileArg {
                                     path: buf,
@@ -70,7 +71,7 @@ impl Args {
                 "--config" | "-c" => match _args_.get(i + 1) {
                     Some(path) => {
                         let buf = PathBuf::from(path);
-                        match fs::OpenOptions::new().read(true).open(&buf).await {
+                        match fs::OpenOptions::new().read(true).open(&buf) {
                             Ok(_) => {
                                 args.config = FileArg {
                                     path: buf,

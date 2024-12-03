@@ -6,7 +6,7 @@ use tokio::sync::{mpsc /*, oneshot*/};
 pub struct Gelbooru<'g> {
     pub root: &'g str,
     pub config: PlatformConfig,
-    pub worker: mpsc::Sender<Operation<'g>>,
+    pub worker: mpsc::Sender<Operation>,
     pub client: Client,
 }
 
