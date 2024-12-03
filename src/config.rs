@@ -9,8 +9,8 @@ use serde::{
 #[derive(Debug, Clone, Deserialize)]
 #[serde(default)]
 pub struct Compress {
-    pub base_dir: String,
-    pub subdir: Option<String>,
+    pub target_dir: String,
+    //pub subdir: Option<String>,
     pub filename: String,
     pub size: (u32, u32),
 }
@@ -18,8 +18,8 @@ pub struct Compress {
 impl Default for Compress {
     fn default() -> Self {
         Self {
-            base_dir: format!("{}/booruchan", HOME.as_str()),
-            subdir: Some("{platform}".to_string()),
+            target_dir: format!("{}/booruchan", HOME.as_str()),
+            //subdir: Some("{platform}".to_string()),
             filename: "{id}.{file_ext}".to_string(),
             size: (5000, 5000),
         }
@@ -78,8 +78,8 @@ impl<'de> Deserialize<'de> for Config {
             Delete,
             Cloud,
             Database,
-            BaseDir,
-            Subdir,
+            TargetDir,
+            //Subdir,
             Filename,
             Compress,
             Skip,
@@ -114,8 +114,8 @@ impl<'de> Deserialize<'de> for Config {
                 let mut delete: Option<()> = None;
                 let mut cloud: Option<()> = None;
                 let mut database: Option<()> = None;
-                let mut base_dir: Option<()> = None;
-                let mut subdir: Option<()> = None;
+                let mut target_dir: Option<()> = None;
+                //let mut subdir: Option<()> = None;
                 let mut filename: Option<()> = None;
                 let mut compress: Option<()> = None;
                 let mut skip: Option<()> = None;
@@ -171,22 +171,22 @@ impl<'de> Deserialize<'de> for Config {
                             database = Some(());
                             global_config.database = expand_home(val);
                         }
-                        Field::BaseDir => {
-                            if base_dir.is_some() {
+                        Field::TargetDir => {
+                            if target_dir.is_some() {
                                 return Err(de::Error::duplicate_field("base_dir"));
                             }
                             let val: String = map.next_value()?;
-                            base_dir = Some(());
-                            global_config.base_dir = expand_home(val);
+                            target_dir = Some(());
+                            global_config.target_dir = expand_home(val);
                         }
-                        Field::Subdir => {
+                        /*Field::Subdir => {
                             if subdir.is_some() {
                                 return Err(de::Error::duplicate_field("output_dir"));
                             }
                             let val = map.next_value()?;
                             subdir = Some(());
                             global_config.subdir = val;
-                        }
+                        }*/
                         Field::Filename => {
                             if filename.is_some() {
                                 return Err(de::Error::duplicate_field("filename"));
@@ -202,7 +202,7 @@ impl<'de> Deserialize<'de> for Config {
                             let val: Option<Compress> = map.next_value()?;
                             match val {
                                 Some(mut _compress) => {
-                                    _compress.base_dir = expand_home(_compress.base_dir);
+                                    _compress.target_dir = expand_home(_compress.target_dir);
                                     global_config.compress = Some(_compress);
                                     compress = Some(())
                                 }
@@ -353,8 +353,8 @@ impl<'de> Deserialize<'de> for Config {
             "delete",
             "cloud",
             "database",
-            "base_dir",
-            "subdir",
+            "target_dir",
+            //"subdir",
             "filename",
             "compress",
             /*"compress_base",
@@ -385,8 +385,8 @@ pub_struct!(GlobalConfig {
     delete: bool,
     cloud: Option<String>,
     database: String,
-    base_dir: String,
-    subdir: Option<String>,
+    target_dir: String,
+    //subdir: Option<String>,
     filename: String,
     compress: Option<Compress>,
     skip: bool,
@@ -415,8 +415,8 @@ impl<'de, 'a> DeserializeSeed<'de> for &'a GlobalConfig {
             Delete,
             Cloud,
             Database,
-            BaseDir,
-            Subdir,
+            TargetDir,
+            //Subdir,
             Filename,
             Compress,
             Skip,
@@ -448,8 +448,8 @@ impl<'de, 'a> DeserializeSeed<'de> for &'a GlobalConfig {
                 let mut delete: Option<bool> = None;
                 let mut cloud: Option<String> = None;
                 let mut database: Option<String> = None;
-                let mut base_dir: Option<String> = None;
-                let mut subdir: Option<String> = None;
+                let mut target_dir: Option<String> = None;
+                //let mut subdir: Option<String> = None;
                 let mut filename: Option<String> = None;
                 let mut compress: Option<Compress> = None;
                 let mut skip: Option<bool> = None;
@@ -494,20 +494,20 @@ impl<'de, 'a> DeserializeSeed<'de> for &'a GlobalConfig {
                             let val = map.next_value()?;
                             database = Some(val);
                         }
-                        Field::BaseDir => {
-                            if base_dir.is_some() {
+                        Field::TargetDir => {
+                            if target_dir.is_some() {
                                 return Err(de::Error::duplicate_field("base_dir"));
                             }
                             let val: String = map.next_value()?;
-                            base_dir = Some(expand_home(val));
+                            target_dir = Some(expand_home(val));
                         }
-                        Field::Subdir => {
+                        /*Field::Subdir => {
                             if subdir.is_some() {
                                 return Err(de::Error::duplicate_field("output_dir"));
                             }
                             let val = map.next_value()?;
                             subdir = Some(val);
-                        }
+                        }*/
                         Field::Filename => {
                             if filename.is_some() {
                                 return Err(de::Error::duplicate_field("filename"));
@@ -522,7 +522,7 @@ impl<'de, 'a> DeserializeSeed<'de> for &'a GlobalConfig {
                             let val: Option<Compress> = map.next_value()?;
                             match val {
                                 Some(mut _compress) => {
-                                    _compress.base_dir = expand_home(_compress.base_dir);
+                                    _compress.target_dir = expand_home(_compress.target_dir);
                                     compress = Some(_compress);
                                 }
                                 None => (),
@@ -639,14 +639,14 @@ impl<'de, 'a> DeserializeSeed<'de> for &'a GlobalConfig {
                         },
                     },
                     database: database.unwrap_or(self.0.database.clone()),
-                    base_dir: base_dir.unwrap_or(self.0.base_dir.clone()),
-                    subdir: if subdir.is_some() {
+                    target_dir: target_dir.unwrap_or(self.0.target_dir.clone()),
+                    /*subdir: if subdir.is_some() {
                         subdir
                     } else if self.0.subdir.is_some() {
                         self.0.subdir.clone()
                     } else {
                         None
-                    },
+                    },*/
                     filename: filename.unwrap_or(self.0.filename.clone()),
                     compress: match compress {
                         Some(c) => Some(c),
@@ -671,8 +671,8 @@ impl<'de, 'a> DeserializeSeed<'de> for &'a GlobalConfig {
             "delete",
             "cloud",
             "database",
-            "base_dir",
-            "subdir",
+            "target_dir",
+            //"subdir",
             "filename",
             "compress",
             "skip",
@@ -697,8 +697,8 @@ impl Default for GlobalConfig {
             delete: false,
             cloud: None,
             database: format!("{}/.archives/booruchan.db", HOME.as_str()),
-            base_dir: format!("{}/booruchan/{{platform}}", HOME.as_str()),
-            subdir: None,
+            target_dir: format!("{}/booruchan/{{platform}}", HOME.as_str()),
+            //subdir: None,
             filename: "{id}.{file_ext}".into(),
             compress: None,
             skip: true,
@@ -725,8 +725,8 @@ pub_struct!(PlatformConfig {
     delete: bool,
     cloud: Option<String>,
     database: String,
-    base_dir: String,
-    subdir: Option<String>,
+    target_dir: String,
+    //subdir: Option<String>,
     filename: String,
     compress: Option<Compress>,
     skip: bool,

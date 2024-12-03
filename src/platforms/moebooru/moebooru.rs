@@ -242,20 +242,10 @@ impl Moebooru {
         kw_map: &Keywords<'_>,
         db_entry: &mut DbEntry,
     ) {
-        let path: Vec<String> = match compress.subdir {
-            Some(ref subdir) => [
-                compress.base_dir.as_str(),
-                subdir.as_str(),
-                compress.filename.as_str(),
-            ]
+        let path = [compress.target_dir.as_str(), compress.filename.as_str()]
             .iter()
-            .map(|&s| kw_map.format(s))
-            .collect::<Vec<String>>(),
-            None => [compress.base_dir.as_str(), compress.filename.as_str()]
-                .iter()
-                .map(|&s| kw_map.format(s))
-                .collect::<Vec<String>>(),
-        };
+            .map(|s| kw_map.format(s))
+            .collect::<Vec<String>>();
         let (local_send, local_recv): (
             oneshot::Sender<Option<PathBuf>>,
             oneshot::Receiver<Option<PathBuf>>,
@@ -300,18 +290,10 @@ impl Moebooru {
     async fn post_task(&self, post: Post, tag_map: &TagMap) {
         let mut is_success = false;
         let kw = self.to_keywords(&post, tag_map).await;
-        //println!("{kw:?}");
-        let base_dir: String = kw.format(self.config.base_dir.as_str());
-        let output_dir: Option<String> = match self.config.subdir {
-            Some(ref o) => Some(kw.format(o.as_str())),
-            None => None,
-        };
+        let target_dir: String = kw.format(self.config.target_dir.as_str());
         let filename: String = kw.format(self.config.filename.as_str());
-        let full_path_vec: Vec<&str> = match output_dir {
-            Some(ref o) => Vec::from([base_dir.as_str(), o.as_str(), filename.as_str()]),
-            None => Vec::from([base_dir.as_str(), filename.as_str()]),
-        };
-        let full_path: String = full_path_vec.join("/");
+        let full_path_vec = Vec::from([target_dir.as_str(), filename.as_str()]);
+        let full_path = full_path_vec.join("/");
         let mut db_entry = DbEntry {
             id: post.id,
             md5: kw.md5.to_string(),
