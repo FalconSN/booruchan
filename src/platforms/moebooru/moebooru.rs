@@ -4,7 +4,7 @@ use std::path::PathBuf;
 // crate imports
 use reqwest::Client;
 use serde::Serialize;
-use serde_json::Map;
+//use serde_json::Map;
 use tokio::{
     sync::{mpsc, oneshot},
     time::{sleep, Duration},
@@ -15,7 +15,7 @@ use super::{Params, Post, Posts, Status};
 use crate::{
     config::{Compress, PlatformConfig},
     fmt::Keywords,
-    platforms::base::TagMap,
+    //platforms::base::TagMap,
     rclone,
     statics::HOME,
     utils,
@@ -48,6 +48,8 @@ pub struct Moebooru {
     client: Client,
     timer: Timer,
 }
+
+type TagMap = std::collections::BTreeMap<String, String>;
 
 impl Moebooru {
     pub fn new(
@@ -115,32 +117,8 @@ impl Moebooru {
         }
     }
 
-    async fn map_tag_types(&self, tag_map: Map<String, serde_json::Value>) -> TagMap {
-        let mut map: TagMap = TagMap::new();
-        for (_tag, _type) in tag_map {
-            // yandere stores tags in keys and types in values
-            // like: {"asuma_toki": "character"}
-            match _type.as_str().unwrap() {
-                GENERAL => map.general.push(_tag),
-                CHARACTER => map.character.push(_tag),
-                COPYRIGHT => map.copyright.push(_tag),
-                ARTIST => map.artist.push(_tag),
-                METADATA => map.metadata.push(_tag),
-                CIRCLE => map.circle.push(_tag),
-                FAULTS => map.faults.push(_tag),
-                STYLE => map.style.push(_tag),
-                _ => panic!("unexpected tag type: {}", _type.as_str().unwrap()),
-            }
-        }
-        return map;
-    }
-
-    async fn to_keywords<'post>(
-        &'post self,
-        post: &'post Post,
-        tag_map: &'post TagMap,
-    ) -> Keywords<'post> {
-        return Keywords {
+    async fn to_keywords<'kw>(&'kw self, post: &'kw Post, tag_map: &'kw TagMap) -> Keywords<'kw> {
+        let mut kw = Keywords {
             platform: self.platform,
             id: post.id,
             tags: post.tags.as_str(),
@@ -153,42 +131,40 @@ impl Moebooru {
                 post.file_url.rsplit_once('.').unwrap().1
             },
             rating: post.rating.as_str(),
-            general: tag_map
-                .general
-                .iter()
-                .map(|s| s.as_str())
-                .collect::<Vec<&str>>(),
-            character: tag_map
-                .character
-                .iter()
-                .map(|s| s.as_str())
-                .collect::<Vec<&str>>(),
-            copyright: tag_map
-                .copyright
-                .iter()
-                .map(|s| s.as_str())
-                .collect::<Vec<&str>>(),
-            artist: tag_map
-                .artist
-                .iter()
-                .map(|s| s.as_str())
-                .collect::<Vec<&str>>(),
-            metadata: tag_map
-                .metadata
-                .iter()
-                .map(|s| s.as_str())
-                .collect::<Vec<&str>>(),
-            circle: tag_map
-                .circle
-                .iter()
-                .map(|s| s.as_str())
-                .collect::<Vec<&str>>(),
-            faults: tag_map
-                .faults
-                .iter()
-                .map(|s| s.as_str())
-                .collect::<Vec<&str>>(),
+            general: Vec::new(),
+            character: Vec::new(),
+            copyright: Vec::new(),
+            artist: Vec::new(),
+            metadata: Vec::new(),
+            circle: Vec::new(),
+            faults: Vec::new(),
+            style: Vec::new(),
         };
+        for tag in post.tags.split_whitespace() {
+            match tag_map.get(tag) {
+                Some(_type) => match _type.as_str() {
+                    GENERAL => kw.general.push(tag),
+                    CHARACTER => kw.character.push(tag),
+                    COPYRIGHT => kw.copyright.push(tag),
+                    ARTIST => kw.artist.push(tag),
+                    METADATA => kw.metadata.push(tag),
+                    CIRCLE => kw.circle.push(tag),
+                    FAULTS => kw.faults.push(tag),
+                    STYLE => kw.style.push(tag),
+                    _ => panic!(
+                        "unexpected tag type for {id} in {platform}: {_type}",
+                        id = post.id,
+                        platform = self.platform,
+                    ),
+                },
+                None => panic!(
+                    "couldn't find tag in tag_map: {tag}\npost id: {id}, platform: {platform}",
+                    id = post.id,
+                    platform = self.platform
+                ),
+            }
+        }
+        return kw;
     }
 
     async fn handle_duplicate<'dup>(&self, db_entry: DbEntry, duplicate_entry: &DbEntry) -> () {
@@ -321,9 +297,10 @@ impl Moebooru {
     }
 
     #[allow(unused_assignments)]
-    async fn post_task<'post>(&'post self, post: Post, tag_map: &'post TagMap) {
+    async fn post_task(&self, post: Post, tag_map: &TagMap) {
         let mut is_success = false;
         let kw = self.to_keywords(&post, tag_map).await;
+        //println!("{kw:?}");
         let base_dir: String = kw.format(self.config.base_dir.as_str());
         let output_dir: Option<String> = match self.config.subdir {
             Some(ref o) => Some(kw.format(o.as_str())),
@@ -444,11 +421,12 @@ impl Moebooru {
             if self.config.skip {
                 self.filter(&mut posts).await;
             }
-            let tag_map: TagMap = {
+            let tag_map: TagMap = serde_json::from_value(response[TAGS].take()).unwrap();
+            /*let tag_map: TagMap = {
                 let _map: Map<String, serde_json::Value> =
                     serde_json::from_value(response[TAGS].take()).unwrap();
                 self.map_tag_types(_map).await
-            };
+            };*/
             return Some((posts, tag_map));
         }
     }

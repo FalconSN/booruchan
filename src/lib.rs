@@ -66,6 +66,7 @@ pub(crate) mod fmt {
         Signed(i64),
     }
     #[allow(dead_code)]
+    #[derive(Debug)]
     pub struct Keywords<'k> {
         pub platform: &'k str,
         pub id: i64,
@@ -83,6 +84,7 @@ pub(crate) mod fmt {
         pub metadata: Vec<&'k str>,
         pub circle: Vec<&'k str>,
         pub faults: Vec<&'k str>,
+        pub style: Vec<&'k str>,
     }
     impl<'k> Keywords<'k> {
         fn parse_key(&self, substr: &'k str) -> Key {
@@ -369,6 +371,8 @@ pub(crate) mod fmt {
                 "copyright" => Some(Value::Array(self.copyright.clone())),
                 "artist" => Some(Value::Array(self.artist.clone())),
                 "metadata" => Some(Value::Array(self.metadata.clone())),
+                "style" => Some(Value::Array(self.style.clone())),
+                "faults" => Some(Value::Array(self.faults.clone())),
                 _ => None,
             }
         }
