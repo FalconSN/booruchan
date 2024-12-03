@@ -610,18 +610,33 @@ impl<'de, 'a> DeserializeSeed<'de> for &'a GlobalConfig {
                 Ok(PlatformConfig {
                     to_cloud: to_cloud.unwrap_or(self.0.to_cloud),
                     delete: delete.unwrap_or(self.0.delete.clone()),
-                    cloud: if to_cloud.is_some_and(|b| b) {
-                        if cloud.is_some() {
-                            cloud
-                        } else {
-                            if self.0.cloud.is_none() {
-                                eprintln!("cloud cannot be empty when to_cloud is true!");
-                                exit(1);
-                            }
-                            self.0.cloud.clone()
-                        }
-                    } else {
-                        None
+                    cloud: match to_cloud {
+                        Some(b) => match b {
+                            true => match cloud {
+                                Some(cloud) => Some(cloud),
+                                None => match self.0.cloud {
+                                    Some(ref cloud) => Some(cloud.to_owned()),
+                                    None => {
+                                        eprintln!("local config to_cloud is true but couldn't find cloud.");
+                                        exit(2);
+                                    }
+                                },
+                            },
+                            false => None,
+                        },
+                        None => match self.0.to_cloud {
+                            true => match cloud {
+                                Some(cloud) => Some(cloud),
+                                None => match self.0.cloud {
+                                    Some(ref cloud) => Some(cloud.to_owned()),
+                                    None => {
+                                        eprintln!("global config to_cloud is true but couldn't find cloud");
+                                        exit(2);
+                                    }
+                                },
+                            },
+                            false => None,
+                        },
                     },
                     database: database.unwrap_or(self.0.database.clone()),
                     base_dir: base_dir.unwrap_or(self.0.base_dir.clone()),
@@ -633,10 +648,9 @@ impl<'de, 'a> DeserializeSeed<'de> for &'a GlobalConfig {
                         None
                     },
                     filename: filename.unwrap_or(self.0.filename.clone()),
-                    compress: if compress.is_some() {
-                        compress
-                    } else {
-                        self.0.compress.clone()
+                    compress: match compress {
+                        Some(c) => Some(c),
+                        None => self.0.compress.clone(),
                     },
                     skip: skip.unwrap_or(self.0.skip.clone()),
                     sleep: sleep.unwrap_or(self.0.sleep.clone()),
