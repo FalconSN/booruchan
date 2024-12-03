@@ -5,6 +5,7 @@ use tokio::fs;
 use tokio::io::{stderr, AsyncReadExt, AsyncWriteExt};
 use tokio::process::Command;
 
+/*
 #[derive(Debug)]
 pub enum RcloneErrorKind {
     MaxRetriesExceeded,
@@ -25,19 +26,20 @@ impl std::fmt::Display for RcloneError {
 }
 
 impl std::error::Error for RcloneError {}
+*/
 
-pub async fn upload<'up, F, Fu, P>(src: P, dest: P, delete: bool, on_success: F) -> bool
+pub async fn upload<'up, F, Fu, P>(src: P, _dest: P, delete: bool, on_success: F) -> bool
 where
     F: FnOnce() -> Fu,
     Fu: Future<Output = ()>,
     P: AsRef<str>,
 {
-    let _dest: &str = dest.as_ref();
+    let dest: &str = _dest.as_ref();
     let mut errors: u8 = 0;
     let src_str: &str = src.as_ref();
     loop {
         match Command::new("rclone")
-            .args(["copy", src_str, _dest, "--no-traverse"])
+            .args(["copy", src_str, dest, "--no-traverse"])
             .stdin(Stdio::null())
             .stdout(Stdio::null())
             .stderr(Stdio::piped())
@@ -69,12 +71,7 @@ where
                         }
                     }
                     Err(e) => panic!("{:?}", e),
-                } /*
-                  on_success().await;
-                  if delete {
-                      fs::remove_file(src_str).await.unwrap();
-                  }
-                  return true;*/
+                }
             }
             Err(e) => match e.kind() {
                 io::ErrorKind::NotFound => {
@@ -132,41 +129,4 @@ where
             Err(e) => panic!("{:?}", e),
         }
     }
-    /*
-    let proc: io::Result<Child> = Command::new("rclone")
-        .args([
-            "moveto",
-            src.as_str(),
-            dest.as_str(),
-            "--retries",
-            "1",
-            "--no-traverse",
-        ])
-        .stdin(Stdio::null())
-        .stdout(Stdio::null())
-        .stderr(Stdio::piped())
-        .spawn();
-
-    match proc {
-        Ok(p) => {
-            match p.wait().await {
-                Ok(exit) => {
-                    if exit.success() {
-                        println!("successfully moved {src} to {dest}");
-                        on_success().await;
-                        return true;
-                    } else {
-                    }
-                }
-            }
-            println!("successfully moved {src} to {dest}");
-            on_success().await;
-            return true;
-        }
-        Err(e) => {
-            println!("unable to move {}, error: {}", src, e);
-            return false;
-        }
-    }
-    */
 }

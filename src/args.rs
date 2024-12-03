@@ -1,4 +1,4 @@
-use crate::HOME;
+use crate::statics::HOME;
 use std::env;
 use std::path::PathBuf;
 use tokio::fs;

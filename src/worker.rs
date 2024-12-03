@@ -1,16 +1,17 @@
 use crate::utils;
 use sqlite::{Connection, ConnectionThreadSafe, State, Statement, Value};
-use std::io::ErrorKind;
 #[cfg(target_os = "android")]
 use std::os::android::fs::MetadataExt;
 #[cfg(target_os = "linux")]
 use std::os::linux::fs::MetadataExt;
 use std::path::{Path, PathBuf};
+use std::{io::ErrorKind, process::exit};
 use tokio::{
     sync::{mpsc, oneshot},
     task,
 };
 
+#[derive(Debug, Default, PartialEq, Eq, Clone)]
 pub struct DbEntry {
     pub id: i64,
     pub md5: String,
@@ -20,29 +21,6 @@ pub struct DbEntry {
     pub compress_path: Option<String>,
 }
 
-#[derive(Debug)]
-pub struct DbEntryOwned {
-    pub id: i64,
-    pub md5: String,
-    pub source: String,
-    pub tags: String,
-    pub path: String,
-    pub compress_path: String,
-}
-
-impl Default for DbEntryOwned {
-    fn default() -> Self {
-        Self {
-            id: 0,
-            md5: "".into(),
-            source: "".into(),
-            tags: "".into(),
-            path: "".into(),
-            compress_path: "".into(),
-        }
-    }
-}
-
 pub struct Insert<'i> {
     pub platform: &'i str,
     pub entry: DbEntry,
@@ -50,7 +28,8 @@ pub struct Insert<'i> {
 
 pub struct Select<'s> {
     pub platform: &'s str,
-    pub sender: oneshot::Sender<Option<DbEntryOwned>>,
+    pub id: i64,
+    pub sender: oneshot::Sender<Option<DbEntry>>,
 }
 
 pub struct ImageRequest {
@@ -99,24 +78,27 @@ impl<'w> Worker<'w> {
     }
 
     async fn select<'_s>(&self, entry: Select<'_s>) {
-        let mut statement = match self
-            .connection
-            .prepare(format!("select * from {table}", table = entry.platform))
-        {
-            Ok(s) => s,
+        let mut statement = match self.connection.prepare(format!(
+            "select * from {table} where id = ?",
+            table = entry.platform
+        )) {
+            Ok(mut s) => {
+                s.bind((1, entry.id)).unwrap();
+                s
+            }
             Err(_) => {
                 entry.sender.send(None).unwrap();
                 return;
             }
         };
-        let mut ret = DbEntryOwned::default();
+        let mut ret = DbEntry::default();
         while let Ok(State::Row) = statement.next() {
             ret.id = statement.read::<i64, _>(0).unwrap();
             ret.md5 = statement.read::<String, _>(1).unwrap();
             ret.source = statement.read::<String, _>(2).unwrap();
             ret.tags = statement.read::<String, _>(3).unwrap();
             ret.path = statement.read::<String, _>(4).unwrap();
-            ret.compress_path = statement.read::<String, _>(5).unwrap();
+            ret.compress_path = statement.read::<Option<String>, _>(5).unwrap();
         }
         entry.sender.send(Some(ret)).unwrap();
         return;
@@ -188,12 +170,28 @@ fn image_resize(mut request: ImageRequest) {
                 Some(fallback) => {
                     request.dest[0] = fallback;
                     dest_path = request.dest.iter().collect::<PathBuf>();
-                    match utils::recursive_dir_create_blocking(&dest_path) {
-                        Ok(_) => (),
+                    match utils::recursive_dir_create_blocking(dest_path.parent().unwrap()) {
+                        Ok(_) => match fs::metadata(&dest_path) {
+                            Ok(m) => {
+                                if m.st_size() > 0 {
+                                    fs::remove_file(&dest_path).unwrap();
+                                }
+                            }
+                            Err(e) => match e.kind() {
+                                ErrorKind::NotFound => (),
+                                _ => panic!("{e:?}"),
+                            },
+                        },
                         Err(e) => panic!("{e:?}"),
                     }
                 }
-                None => panic!("{e:?}"),
+                None => {
+                    eprintln!(
+                        "could not create directory '{}', permission denied.",
+                        dest_path.display()
+                    );
+                    exit(e.raw_os_error().unwrap_or(1));
+                }
             },
             _ => panic!("{e:?}"),
         },

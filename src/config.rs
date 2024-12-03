@@ -1,6 +1,6 @@
 use std::{fmt, process::exit};
 
-use crate::{pub_struct, HOME};
+use crate::{pub_struct, statics::HOME};
 use serde::{
     de::{self, DeserializeSeed, Deserializer, MapAccess, Visitor},
     Deserialize,
@@ -11,10 +11,31 @@ use serde::{
 pub struct Config {
     pub global: GlobalConfig,
     // platforms
+    //pub platforms: Vec<Platform>,
     pub konachan: Option<PlatformConfig>,
     pub sakugabooru: Option<PlatformConfig>,
     pub yandere: Option<PlatformConfig>,
     pub gelbooru: Option<PlatformConfig>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(default)]
+pub struct Compress {
+    pub base_dir: String,
+    pub subdir: Option<String>,
+    pub filename: String,
+    pub size: (u32, u32),
+}
+
+impl Default for Compress {
+    fn default() -> Self {
+        Self {
+            base_dir: format!("{}/booruchan", HOME.as_str()),
+            subdir: Some("{platform}".to_string()),
+            filename: "{id}.{file_ext}".to_string(),
+            size: (5000, 5000),
+        }
+    }
 }
 
 impl<'de> Deserialize<'de> for Config {
@@ -33,10 +54,6 @@ impl<'de> Deserialize<'de> for Config {
             Subdir,
             Filename,
             Compress,
-            CompressBase,
-            CompressSubdir,
-            CompressFilename,
-            CompressSize,
             Skip,
             Sleep,
             Retries,
@@ -73,10 +90,6 @@ impl<'de> Deserialize<'de> for Config {
                 let mut subdir: Option<()> = None;
                 let mut filename: Option<()> = None;
                 let mut compress: Option<()> = None;
-                let mut compress_base: Option<()> = None;
-                let mut compress_subdir: Option<()> = None;
-                let mut compress_filename: Option<()> = None;
-                let mut compress_size: Option<()> = None;
                 let mut skip: Option<()> = None;
                 let mut sleep: Option<()> = None;
                 let mut retries: Option<()> = None;
@@ -86,6 +99,11 @@ impl<'de> Deserialize<'de> for Config {
                 let mut dirname_repl: Option<()> = None;
                 let mut tags: Option<()> = None;
                 let mut blacklist: Option<()> = None;
+                /*let mut platforms: Vec<Platform> = Vec::new();
+                let mut yandere = false;
+                let mut sakugabooru = false;
+                let mut konachan = false;
+                let mut gelbooru = false;*/
                 let mut yandere: Option<PlatformConfig> = None;
                 let mut sakugabooru: Option<PlatformConfig> = None;
                 let mut konachan: Option<PlatformConfig> = None;
@@ -129,7 +147,7 @@ impl<'de> Deserialize<'de> for Config {
                             if base_dir.is_some() {
                                 return Err(de::Error::duplicate_field("base_dir"));
                             }
-                            let val = map.next_value()?;
+                            let val: String = map.next_value()?;
                             base_dir = Some(());
                             global_config.base_dir = expand_home(val);
                         }
@@ -153,41 +171,15 @@ impl<'de> Deserialize<'de> for Config {
                             if compress.is_some() {
                                 return Err(de::Error::duplicate_field("compress"));
                             }
-                            let val = map.next_value()?;
-                            compress = Some(());
-                            global_config.compress = val;
-                        }
-                        Field::CompressBase => {
-                            if compress_base.is_some() {
-                                return Err(de::Error::duplicate_field("compress_base"));
+                            let val: Option<Compress> = map.next_value()?;
+                            match val {
+                                Some(mut _compress) => {
+                                    _compress.base_dir = expand_home(_compress.base_dir);
+                                    global_config.compress = Some(_compress);
+                                    compress = Some(())
+                                }
+                                None => (),
                             }
-                            let val = map.next_value()?;
-                            compress_base = Some(());
-                            global_config.compress_base = Some(expand_home(val));
-                        }
-                        Field::CompressSubdir => {
-                            if compress_subdir.is_some() {
-                                return Err(de::Error::duplicate_field("compress_subdir"));
-                            }
-                            let val = map.next_value()?;
-                            compress_subdir = Some(());
-                            global_config.compress_subdir = Some(val);
-                        }
-                        Field::CompressFilename => {
-                            if compress_filename.is_some() {
-                                return Err(de::Error::duplicate_field("compress_filename"));
-                            }
-                            let val = map.next_value()?;
-                            compress_filename = Some(());
-                            global_config.compress_filename = Some(val);
-                        }
-                        Field::CompressSize => {
-                            if compress_size.is_some() {
-                                return Err(de::Error::duplicate_field("compress_size"));
-                            }
-                            let val = map.next_value()?;
-                            compress_size = Some(());
-                            global_config.compress_size = Some(val);
                         }
                         Field::Skip => {
                             if skip.is_some() {
@@ -262,6 +254,11 @@ impl<'de> Deserialize<'de> for Config {
                             global_config.blacklist = val;
                         }
                         Field::Yandere => {
+                            /*if yandere {
+                                return Err(de::Error::duplicate_field("yandere"));
+                            }
+                            platforms.push(Platform::Yandere(map.next_value_seed(&global_config)?));
+                            yandere = true;*/
                             if yandere.is_some() {
                                 return Err(de::Error::duplicate_field("yandere"));
                             }
@@ -269,6 +266,13 @@ impl<'de> Deserialize<'de> for Config {
                             yandere = Some(val);
                         }
                         Field::Sakugabooru => {
+                            /*if sakugabooru {
+                                return Err(de::Error::duplicate_field("sakugabooru"));
+                            }
+                            platforms
+                                .push(Platform::Sakugabooru(map.next_value_seed(&global_config)?));
+                            sakugabooru = true;*/
+
                             if sakugabooru.is_some() {
                                 return Err(de::Error::duplicate_field("sakugabooru"));
                             }
@@ -276,6 +280,13 @@ impl<'de> Deserialize<'de> for Config {
                             sakugabooru = Some(val);
                         }
                         Field::Konachan => {
+                            /*if konachan {
+                                return Err(de::Error::duplicate_field("konachan"));
+                            }
+                            platforms
+                                .push(Platform::Konachan(map.next_value_seed(&global_config)?));
+                            konachan = true;*/
+
                             if konachan.is_some() {
                                 return Err(de::Error::duplicate_field("konachan"));
                             }
@@ -283,6 +294,12 @@ impl<'de> Deserialize<'de> for Config {
                             konachan = Some(val);
                         }
                         Field::Gelbooru => {
+                            /*if gelbooru {
+                                return Err(de::Error::duplicate_field("gelbooru"));
+                            }
+                            platforms
+                                .push(Platform::Gelbooru(map.next_value_seed(&global_config)?));
+                            gelbooru = true;*/
                             if gelbooru.is_some() {
                                 return Err(de::Error::duplicate_field("gelbooru"));
                             }
@@ -291,34 +308,9 @@ impl<'de> Deserialize<'de> for Config {
                         }
                     }
                 }
-                // provide default values for
-                // compress_base, compress_subdir and compress_filename
-                // when they're empty
-                if global_config.compress {
-                    if global_config.compress_base.is_none() {
-                        global_config.compress_base = Some(global_config.base_dir.clone());
-                    }
-                    if global_config.compress_subdir.is_none() {
-                        if global_config.subdir.is_some() {
-                            global_config.compress_subdir = global_config.subdir.clone();
-                        }
-                    }
-                    if global_config.compress_filename.is_none() {
-                        global_config.compress_filename = Some(global_config.filename.clone());
-                    }
-                    if global_config.compress_size.is_none() {
-                        global_config.compress_size = Some((5000, 5000));
-                    }
-                    if global_config.compress_subdir.is_none() {
-                        global_config.compress_base =
-                            Some(global_config.compress_base.unwrap() + "_compressed");
-                    } else {
-                        global_config.compress_subdir =
-                            Some(global_config.compress_subdir.unwrap() + "_compressed");
-                    }
-                }
                 Ok(Config {
                     global: global_config,
+                    //platforms,
                     yandere,
                     sakugabooru,
                     konachan,
@@ -335,10 +327,10 @@ impl<'de> Deserialize<'de> for Config {
             "subdir",
             "filename",
             "compress",
-            "compress_base",
+            /*"compress_base",
             "compress_subdir",
             "compress_filename",
-            "compress_size",
+            "compress_size",*/
             "skip",
             "sleep",
             "retries",
@@ -349,6 +341,8 @@ impl<'de> Deserialize<'de> for Config {
             "tags",
             "blacklist",
             "yandere",
+            "sakugabooru",
+            "konachan",
             "gelbooru",
         ];
         deserializer.deserialize_struct("Config", FIELDS, ConfigVisitor)
@@ -364,11 +358,7 @@ pub_struct!(GlobalConfig {
     base_dir: String,
     subdir: Option<String>,
     filename: String,
-    compress: bool,
-    compress_base: Option<String>,
-    compress_subdir: Option<String>,
-    compress_filename: Option<String>,
-    compress_size: Option<(u32, u32)>,
+    compress: Option<Compress>,
     skip: bool,
     sleep: f32,
     retries: i64,
@@ -378,8 +368,6 @@ pub_struct!(GlobalConfig {
     dirname_repl: Vec<String>,
     tags: Vec<String>,
     blacklist: Vec<String>,
-    //yandere: Option<PlatformConfig>,
-    //gelbooru: Option<PlatformConfig>,
 });
 
 #[allow(unused_assignments)]
@@ -401,10 +389,6 @@ impl<'de, 'a> DeserializeSeed<'de> for &'a GlobalConfig {
             Subdir,
             Filename,
             Compress,
-            CompressBase,
-            CompressSubdir,
-            CompressFilename,
-            CompressSize,
             Skip,
             Sleep,
             Retries,
@@ -430,7 +414,6 @@ impl<'de, 'a> DeserializeSeed<'de> for &'a GlobalConfig {
             where
                 V: MapAccess<'de>,
             {
-                //let mut global_config: GlobalConfig = GlobalConfig::default();
                 let mut to_cloud: Option<bool> = None;
                 let mut delete: Option<bool> = None;
                 let mut cloud: Option<String> = None;
@@ -438,11 +421,7 @@ impl<'de, 'a> DeserializeSeed<'de> for &'a GlobalConfig {
                 let mut base_dir: Option<String> = None;
                 let mut subdir: Option<String> = None;
                 let mut filename: Option<String> = None;
-                let mut compress: Option<bool> = None;
-                let mut compress_base: Option<String> = None;
-                let mut compress_subdir: Option<String> = None;
-                let mut compress_filename: Option<String> = None;
-                let mut compress_size: Option<(u32, u32)> = None;
+                let mut compress: Option<Compress> = None;
                 let mut skip: Option<bool> = None;
                 let mut sleep: Option<f32> = None;
                 let mut retries: Option<i64> = None;
@@ -489,7 +468,7 @@ impl<'de, 'a> DeserializeSeed<'de> for &'a GlobalConfig {
                             if base_dir.is_some() {
                                 return Err(de::Error::duplicate_field("base_dir"));
                             }
-                            let val = map.next_value()?;
+                            let val: String = map.next_value()?;
                             base_dir = Some(expand_home(val));
                         }
                         Field::Subdir => {
@@ -510,36 +489,14 @@ impl<'de, 'a> DeserializeSeed<'de> for &'a GlobalConfig {
                             if compress.is_some() {
                                 return Err(de::Error::duplicate_field("compress"));
                             }
-                            let val = map.next_value()?;
-                            compress = Some(val);
-                        }
-                        Field::CompressBase => {
-                            if compress_base.is_some() {
-                                return Err(de::Error::duplicate_field("compress_base"));
+                            let val: Option<Compress> = map.next_value()?;
+                            match val {
+                                Some(mut _compress) => {
+                                    _compress.base_dir = expand_home(_compress.base_dir);
+                                    compress = Some(_compress);
+                                }
+                                None => (),
                             }
-                            let val = map.next_value()?;
-                            compress_base = Some(expand_home(val));
-                        }
-                        Field::CompressSubdir => {
-                            if compress_subdir.is_some() {
-                                return Err(de::Error::duplicate_field("compress_subdir"));
-                            }
-                            let val = map.next_value()?;
-                            compress_subdir = Some(val);
-                        }
-                        Field::CompressFilename => {
-                            if compress_filename.is_some() {
-                                return Err(de::Error::duplicate_field("compress_filename"));
-                            }
-                            let val = map.next_value()?;
-                            compress_filename = Some(val);
-                        }
-                        Field::CompressSize => {
-                            if compress_size.is_some() {
-                                return Err(de::Error::duplicate_field("compress_size"));
-                            }
-                            let val = map.next_value()?;
-                            compress_size = Some(val);
                         }
                         Field::Skip => {
                             if skip.is_some() {
@@ -620,57 +577,6 @@ impl<'de, 'a> DeserializeSeed<'de> for &'a GlobalConfig {
                         }
                     }
                 }
-                // provide default values for
-                // compress_base, compress_subdir and compress_filename
-                // when they're empty
-                if compress.is_none() {
-                    compress = Some(self.0.compress);
-                }
-                if compress.is_some_and(|b| b) {
-                    if compress_base.is_none() {
-                        if self.0.compress_base.is_some() {
-                            compress_base = self.0.compress_base.clone();
-                        } else {
-                            compress_base =
-                                Some(base_dir.as_ref().unwrap_or(&self.0.base_dir).to_owned());
-                        }
-                    }
-                    if compress_subdir.is_none() {
-                        if self.0.compress_subdir.is_some() {
-                            compress_subdir = self.0.compress_subdir.clone();
-                        } else {
-                            if subdir.is_some() {
-                                compress_subdir = Some(subdir.as_ref().unwrap().to_owned());
-                            } else if self.0.subdir.is_some() {
-                                compress_subdir = self.0.subdir.clone();
-                            }
-                        }
-                        compress_subdir = self.0.compress_subdir.clone();
-                    }
-                    if compress_filename.is_none() {
-                        if self.0.compress_filename.is_some() {
-                            compress_filename = self.0.compress_filename.clone();
-                        } else {
-                            if filename.is_some() {
-                                compress_filename = filename.clone();
-                            } else {
-                                compress_filename = Some(self.0.filename.clone());
-                            }
-                        }
-                    }
-                    if compress_size.is_none() {
-                        if self.0.compress_size.is_some() {
-                            compress_size = self.0.compress_size.clone();
-                        } else {
-                            compress_size = Some((5000, 5000));
-                        }
-                    }
-                    if compress_subdir.is_none() {
-                        compress_base = Some(compress_base.unwrap() + "_compressed");
-                    } else {
-                        compress_subdir = Some(compress_subdir.unwrap() + "_compressed");
-                    }
-                }
                 Ok(PlatformConfig {
                     to_cloud: to_cloud.unwrap_or(self.0.to_cloud),
                     delete: delete.unwrap_or(self.0.delete.clone()),
@@ -697,11 +603,11 @@ impl<'de, 'a> DeserializeSeed<'de> for &'a GlobalConfig {
                         None
                     },
                     filename: filename.unwrap_or(self.0.filename.clone()),
-                    compress: compress.unwrap_or(self.0.compress.clone()),
-                    compress_base,
-                    compress_subdir,
-                    compress_filename,
-                    compress_size,
+                    compress: if compress.is_some() {
+                        compress
+                    } else {
+                        self.0.compress.clone()
+                    },
                     skip: skip.unwrap_or(self.0.skip.clone()),
                     sleep: sleep.unwrap_or(self.0.sleep.clone()),
                     retries: retries.unwrap_or(self.0.retries.clone()),
@@ -725,10 +631,6 @@ impl<'de, 'a> DeserializeSeed<'de> for &'a GlobalConfig {
             "subdir",
             "filename",
             "compress",
-            "compress_base",
-            "compress_subdir",
-            "compress_filename",
-            "compress_size",
             "skip",
             "sleep",
             "retries",
@@ -754,11 +656,7 @@ impl Default for GlobalConfig {
             base_dir: format!("{}/booruchan/{{platform}}", HOME.as_str()),
             subdir: None,
             filename: "{id}.{file_ext}".into(),
-            compress: false,
-            compress_base: None,
-            compress_subdir: None,
-            compress_filename: None,
-            compress_size: None,
+            compress: None,
             skip: true,
             sleep: 1.5,
             retries: 5,
@@ -774,14 +672,10 @@ impl Default for GlobalConfig {
                 .collect(),
             tags: Vec::new(),
             blacklist: Vec::new(),
-            //yandere: None,
-            //gelbooru: None,
         }
     }
 }
 
-//#[derive(Serialize, Deserialize)]
-//#[derive(Debug)]
 pub_struct!(PlatformConfig {
     to_cloud: bool,
     delete: bool,
@@ -790,11 +684,7 @@ pub_struct!(PlatformConfig {
     base_dir: String,
     subdir: Option<String>,
     filename: String,
-    compress: bool,
-    compress_base: Option<String>,
-    compress_subdir: Option<String>,
-    compress_filename: Option<String>,
-    compress_size: Option<(u32, u32)>,
+    compress: Option<Compress>,
     skip: bool,
     sleep: f32,
     retries: i64,
@@ -808,65 +698,9 @@ pub_struct!(PlatformConfig {
     user_id: Option<u64>,
 });
 
-/*
-impl PlatformConfig {
-    pub async fn parse<P: AsRef<PathBuf>>(_path: P) {
-        let path = _path.as_ref();
-        let mut file = match fs::OpenOptions::new()
-            .read(true)
-            .create(false)
-            .open(path)
-            .await
-        {
-            Ok(f) => f,
-            Err(e) => panic!("{e:?}"),
-        };
-        let mut file_content: String = String::new();
-        let _ = file.read_to_string(&mut file_content).await;
-    }
-}
-*/
-
-/*impl Default for PlatformConfig {
-    fn default() -> Self {
-        Self {
-            to_cloud: false,
-            delete: false,
-            cloud: None,
-            database: format!("{}/.archives/booruchan.db", HOME.as_str()),
-            base_dir: format!("{}/booruchan/{{platform}}", HOME.as_str()),
-            subdir: None,
-            filename: "{id}.{file_ext}".to_string(),
-            compress: false,
-            compress_base: None,
-            compress_subdir: None,
-            compress_filename: None,
-            compress_size: None,
-            skip: true,
-            sleep: 1.0,
-            retries: 5,
-            retry_sleep: 1.0,
-            timeout: 30.0,
-            filename_repl: [":", "!", "?", "*", "\"", "'", "/"]
-                .iter()
-                .map(|s| s.to_string())
-                .collect(),
-            dirname_repl: [":", "!", "?", "*", "\"", "'"]
-                .iter()
-                .map(|s| s.to_string())
-                .collect(),
-            tags: Vec::new(),
-            blacklist: Vec::new(),
-            api_key: None,
-            user_id: None,
-        }
-    }
-}*/
-
 fn expand_home(string: String) -> String {
-    if !string.starts_with("~/") {
-        return string;
-    } else {
-        return format!("{}/{}", HOME.as_str(), string.trim_start_matches("~/"));
+    match string.starts_with("~/") {
+        true => format!("{}/{}", HOME.as_str(), string.trim_start_matches("~/")),
+        false => string,
     }
 }
