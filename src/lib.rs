@@ -26,7 +26,16 @@ pub mod consts {
     pub const GREEN: &str = "\x1b[32;1;1m";
     pub const RESET: &str = "\x1b[0m";
 
-    //pub const DUPLICATE: &str = "_duplicate_";
+    pub mod tag_types {
+        pub const GENERAL: &str = "general";
+        pub const CHARACTER: &str = "character";
+        pub const ARTIST: &str = "artist";
+        pub const COPYRIGHT: &str = "copyright";
+        pub const METADATA: &str = "metadata";
+        pub const CIRCLE: &str = "circle";
+        pub const FAULTS: &str = "faults";
+        pub const STYLE: &str = "style";
+    }
 }
 
 pub mod statics {

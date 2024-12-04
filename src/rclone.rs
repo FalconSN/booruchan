@@ -5,6 +5,8 @@ use tokio::fs;
 use tokio::io::{stderr, AsyncReadExt, AsyncWriteExt};
 use tokio::process::Command;
 
+// TODO: use rclone http api and maybe implement proper error enums
+
 /*
 #[derive(Debug)]
 pub enum RcloneErrorKind {
@@ -61,12 +63,12 @@ where
                                     kind: RcloneErrorKind::MaxRetriesExceeded,
                                     msg: format!("max retries exceeded for '{}'", src_str),
                                 });*/
-                                println!("giving up on uploading {}", src);
+                                eprintln!("giving up on uploading {}", src);
                                 return false;
                             }
                             let mut err: String = String::new();
                             _stderr.read_to_string(&mut err).await.unwrap();
-                            println!("upload error: {}", err);
+                            eprintln!("upload error: {}", err);
                             errors += 1;
                         }
                     }
@@ -75,11 +77,11 @@ where
             }
             Err(e) => match e.kind() {
                 io::ErrorKind::NotFound => {
-                    println!("do you have rclone installed?");
+                    eprintln!("do you have rclone installed?");
                     exit(1);
                 }
                 io::ErrorKind::PermissionDenied => {
-                    println!("unable to execute rclone!");
+                    eprintln!("unable to execute rclone!");
                     exit(1);
                 }
                 _ => panic!("{:?}", e),

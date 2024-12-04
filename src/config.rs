@@ -161,7 +161,7 @@ impl<'de> Deserialize<'de> for Config {
                             }
                             let val = map.next_value()?;
                             cloud = Some(());
-                            global_config.cloud = Some(val);
+                            global_config.cloud = val;
                         }
                         Field::Database => {
                             if database.is_some() {
@@ -383,7 +383,7 @@ impl<'de> Deserialize<'de> for Config {
 pub_struct!(GlobalConfig {
     to_cloud: bool,
     delete: bool,
-    cloud: Option<String>,
+    cloud: String,
     database: String,
     target_dir: String,
     //subdir: Option<String>,
@@ -613,29 +613,29 @@ impl<'de, 'a> DeserializeSeed<'de> for &'a GlobalConfig {
                     cloud: match to_cloud {
                         Some(b) => match b {
                             true => match cloud {
-                                Some(cloud) => Some(cloud),
-                                None => match self.0.cloud {
-                                    Some(ref cloud) => Some(cloud.to_owned()),
-                                    None => {
+                                Some(cloud) => cloud,
+                                None => match self.0.cloud.is_empty() {
+                                    false => self.0.cloud.to_owned(),
+                                    true => {
                                         eprintln!("local config to_cloud is true but couldn't find cloud.");
                                         exit(2);
                                     }
                                 },
                             },
-                            false => None,
+                            false => String::with_capacity(0),
                         },
                         None => match self.0.to_cloud {
                             true => match cloud {
-                                Some(cloud) => Some(cloud),
-                                None => match self.0.cloud {
-                                    Some(ref cloud) => Some(cloud.to_owned()),
-                                    None => {
+                                Some(cloud) => cloud,
+                                None => match self.0.cloud.is_empty() {
+                                    false => self.0.cloud.to_owned(),
+                                    true => {
                                         eprintln!("global config to_cloud is true but couldn't find cloud");
                                         exit(2);
                                     }
                                 },
                             },
-                            false => None,
+                            false => String::with_capacity(0),
                         },
                     },
                     database: database.unwrap_or(self.0.database.clone()),
@@ -695,7 +695,7 @@ impl Default for GlobalConfig {
         Self {
             to_cloud: false,
             delete: false,
-            cloud: None,
+            cloud: String::new(),
             database: format!("{}/.archives/booruchan.db", HOME.as_str()),
             target_dir: format!("{}/booruchan/{{platform}}", HOME.as_str()),
             //subdir: None,
@@ -723,7 +723,7 @@ impl Default for GlobalConfig {
 pub_struct!(PlatformConfig {
     to_cloud: bool,
     delete: bool,
-    cloud: Option<String>,
+    cloud: String,
     database: String,
     target_dir: String,
     //subdir: Option<String>,

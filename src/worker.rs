@@ -79,7 +79,7 @@ impl Worker {
 
     async fn select(&self, entry: Select) {
         let mut statement = match self.connection.prepare(format!(
-            "select * from {table} where id = ?",
+            "SELECT * FROM {table} WHERE id = ?",
             table = entry.platform
         )) {
             Ok(mut s) => {
@@ -119,7 +119,7 @@ impl Worker {
             .unwrap();
 
         let query: String = format!(
-            "insert or replace into {table} values(?, ?, ?, ?, ?, ?)", /* id, md5, source, tags, path, compress_path*/
+            "INSERT OR REPLACE INTO {table} VALUES(?, ?, ?, ?, ?, ?)", /* id, md5, source, tags, path, compress_path*/
             table = db_entry.platform,
         );
         let mut statement: Statement = self.connection.prepare(query).unwrap();
